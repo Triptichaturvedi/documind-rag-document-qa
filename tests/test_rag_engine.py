@@ -11,6 +11,8 @@ from src.rag_engine import (
     ModelProviderError,
     answer_question,
     build_vector_store,
+    DEFAULT_GROQ_MODEL,
+    GROQ_BASE_URL,
     load_uploaded_file,
     open_vector_store,
     split_documents,
@@ -59,6 +61,39 @@ def test_configured_provider_is_used_and_sources_are_returned(monkeypatch):
     assert "PF-204" in answer
     assert sources[0][0].metadata["source"] == "test.txt"
     assert sources[0][1] == 0.8
+
+
+def test_groq_provider_uses_compatible_client_configuration(monkeypatch):
+    captured = {}
+
+    def fake_chat_openai(**kwargs):
+        captured.update(kwargs)
+        return RunnableLambda(lambda _: AIMessage(content="Grounded Groq answer"))
+
+    monkeypatch.setattr(langchain_openai, "ChatOpenAI", fake_chat_openai)
+    answer, sources = answer_question(
+        "What is the code?",
+        FakeVectorStore(),
+        provider="Groq",
+        model_name=DEFAULT_GROQ_MODEL,
+        groq_api_key="test-groq-key",
+    )
+
+    assert answer == "Grounded Groq answer"
+    assert sources
+    assert captured["model"] == DEFAULT_GROQ_MODEL
+    assert captured["api_key"] == "test-groq-key"
+    assert captured["base_url"] == GROQ_BASE_URL
+
+
+def test_missing_groq_key_is_actionable():
+    with pytest.raises(ModelProviderError, match="GROQ_API_KEY"):
+        answer_question(
+            "What is the code?",
+            FakeVectorStore(),
+            provider="Groq",
+            model_name=DEFAULT_GROQ_MODEL,
+        )
 
 
 def test_irrelevant_question_refuses_without_calling_provider():

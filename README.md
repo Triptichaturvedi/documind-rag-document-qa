@@ -1,6 +1,6 @@
 # RAG-Based Document Q&A System — HCLTech Career Shaper Project 72
 
-A Streamlit application for document-grounded question answering using LangChain, ChromaDB, sentence-transformer embeddings, and either OpenAI or Ollama. The supplied `dataset.csv` is retained for EDA and evaluation analytics; it contains recorded metrics and metadata, not source text. The live RAG index is therefore built from PDFs, DOCX, TXT, Markdown, or HTML files uploaded in the app.
+A Streamlit application for document-grounded question answering using LangChain, ChromaDB, sentence-transformer embeddings, and OpenAI, Groq, or Ollama. The supplied `dataset.csv` is retained for EDA and evaluation analytics; it contains recorded metrics and metadata, not source text. The live RAG index is therefore built from PDFs, DOCX, TXT, Markdown, or HTML files uploaded in the app.
 
 GitHub repository: https://github.com/Triptichaturvedi/documind-rag-document-qa
 
@@ -8,9 +8,9 @@ GitHub repository: https://github.com/Triptichaturvedi/documind-rag-document-qa
 - Windows 10/11, Python 3.12 recommended (also used by Streamlit Community Cloud)
 - 8 GB RAM recommended for CPU embedding; first run downloads `all-MiniLM-L6-v2`
 - Internet access for installing packages and downloading embeddings; OpenAI provider additionally needs an API key and may incur charges
-- OpenAI is the cloud-compatible default and requires the `OPENAI_API_KEY`
-  secret. Ollama remains available locally with `llama3.2:3b` pulled and
-  running; it does not require OpenAI credits.
+- OpenAI and Groq are cloud-compatible providers and require
+  `OPENAI_API_KEY` or `GROQ_API_KEY`, respectively. Ollama remains available
+  locally with `llama3.2:3b` pulled and running.
 
 ## Windows setup
 Open PowerShell in this project folder:
@@ -34,11 +34,12 @@ streamlit run app.py
    sentence-transformer stack. Streamlit Community Cloud controls this
    setting in its deployment UI; `runtime.txt` is not the supported Python
    version configuration for Community Cloud.
-4. In the app settings, add `OPENAI_API_KEY` under **Secrets** if using the
-   OpenAI provider. Never commit that value.
-5. OpenAI is the supported hosted deployment provider. Ollama requires a
-   separately running local Ollama server and is not available inside a normal
-   Streamlit Community Cloud deployment.
+4. In the app settings, add `OPENAI_API_KEY` or `GROQ_API_KEY` under
+   **Secrets**, depending on the selected provider. Never commit either value.
+5. Groq uses the OpenAI-compatible endpoint
+   `https://api.groq.com/openai/v1` and the `llama-3.3-70b-versatile` model.
+   Ollama requires a separately running local Ollama server and is not
+   available inside a normal Streamlit Community Cloud deployment.
 6. Uploaded documents and the local Chroma index are runtime data. They are
    not repository assets and may be lost when the Cloud app restarts or is
    redeployed; this project does not use a remote persistent vector database.
@@ -64,10 +65,10 @@ If PowerShell blocks activation, use Command Prompt:
 
 ## Use the application
 1. Launch Streamlit and open the local URL shown in the terminal.
-2. The app defaults to OpenAI so the same configuration works in Streamlit
-   Community Cloud. Configure `OPENAI_API_KEY` through Streamlit Secrets or
-   the environment; do not paste it into source code or commit it. For local
-   use without an API key, select Ollama and verify the configured URL and
+2. The app defaults to OpenAI. Configure `OPENAI_API_KEY` through Streamlit
+   Secrets or the environment, or select Groq and configure `GROQ_API_KEY`.
+   Do not paste either key into source code or commit it. For local use
+   without a hosted API key, select Ollama and verify the configured URL and
    `llama3.2:3b` service.
 3. Upload one or more PDF, DOCX, TXT, MD, or HTML files.
 4. Click **Build / replace document index** and wait for embedding to finish.
@@ -119,7 +120,7 @@ statistics from the supplied CSV, not measurements of the live app.
 The data dictionary describes the supplied score fields but does not claim how their scores were calculated. Mean scores in the app are descriptive statistics of the provided dataset, not measured live application performance.
 
 ## Architecture
-Document upload → format-specific loader → recursive chunking with overlap → sentence-transformer embeddings → ChromaDB vector index → top-k similarity retrieval → OpenAI/Ollama answer generation using retrieved context → answer with source evidence.
+Document upload → format-specific loader → recursive chunking with overlap → sentence-transformer embeddings → ChromaDB vector index → top-k similarity retrieval → OpenAI/Groq/Ollama answer generation using retrieved context → answer with source evidence.
 
 ## Important limitations
 - This dataset does not contain `chunk_text`, `query`, `answer`, `source`, or `embedding_model`, despite these being listed as expected corpus fields in the brief. Do not treat the supplied CSV as the actual source corpus or fabricate missing text.
@@ -139,7 +140,7 @@ Document upload → format-specific loader → recursive chunking with overlap �
   after upgrading or changing the Chroma environment so the running process
   loads the current configuration.
 - Streamlit Community Cloud does not provide the local Ollama service and
-  should use OpenAI with a secret API key. The deployed app's Chroma index is
+  should use OpenAI or Groq with a secret API key. The deployed app's Chroma index is
   ephemeral unless a remote persistence strategy is added.
 - Provider errors are surfaced as actionable messages for missing
   credentials, authentication failures, rate limits, timeouts, and connection

@@ -18,11 +18,15 @@ DEFAULT_CHROMA_DATABASE = "default_database"
 SUPPORTED_PROVIDERS = {"OpenAI", "Ollama"}
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODELS = ("gpt-4o-mini", "gpt-4.1-mini")
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 MODEL_REQUEST_TIMEOUT = 60
 
 __all__ = [
     "DEFAULT_OPENAI_MODEL",
     "OPENAI_MODELS",
+    "DEFAULT_GROQ_MODEL",
+    "GROQ_BASE_URL",
     "ModelProviderError",
     "answer_question",
     "build_vector_store",
@@ -103,13 +107,14 @@ def open_vector_store(persist_directory: str = "chroma_db", collection_name: str
 
 def answer_question(question: str, vector_store, provider: str = "OpenAI",
                     model_name: str = DEFAULT_OPENAI_MODEL, top_k: int = 4,
-                    openai_api_key: str = "", ollama_base_url: str = DEFAULT_OLLAMA_URL):
+                    openai_api_key: str = "", ollama_base_url: str = DEFAULT_OLLAMA_URL,
+                    groq_api_key: str = ""):
     """Retrieve evidence and generate a source-grounded answer. Returns answer and source docs."""
     from langchain_core.prompts import ChatPromptTemplate
     if not question.strip():
         raise ValueError("Please enter a question.")
-    if provider not in SUPPORTED_PROVIDERS:
-        raise ValueError(f"Unsupported model provider: {provider}. Choose OpenAI or Ollama.")
+    if provider not in SUPPORTED_PROVIDERS | {"Groq"}:
+        raise ValueError(f"Unsupported model provider: {provider}. Choose OpenAI, Groq, or Ollama.")
     retrieved = vector_store.similarity_search_with_relevance_scores(question, k=top_k)
     sources = [(doc, float(score)) for doc, score in retrieved if score >= 0.20]
     if not sources:
@@ -138,6 +143,23 @@ def answer_question(question: str, vector_store, provider: str = "OpenAI",
             timeout=MODEL_REQUEST_TIMEOUT,
             max_retries=2,
         )
+    elif provider == "Groq":
+        if not groq_api_key:
+            raise ModelProviderError(
+                "Groq is selected, but GROQ_API_KEY is missing. "
+                "Add it to the deployment environment or choose another provider."
+            )
+        if model_name != DEFAULT_GROQ_MODEL:
+            raise ValueError(f"Unsupported Groq model: {model_name}. Choose {DEFAULT_GROQ_MODEL}.")
+        from langchain_openai import ChatOpenAI
+        llm = ChatOpenAI(
+            model=model_name,
+            api_key=groq_api_key,
+            base_url=GROQ_BASE_URL,
+            temperature=0,
+            timeout=MODEL_REQUEST_TIMEOUT,
+            max_retries=2,
+        )
     else:
         from langchain_ollama import ChatOllama
         if not model_name.strip():
@@ -154,13 +176,14 @@ def answer_question(question: str, vector_store, provider: str = "OpenAI",
     except Exception as error:
         message = str(error).lower()
         if "401" in message or "authentication" in message or "api key" in message:
-            detail = "OpenAI authentication failed. Check the OPENAI_API_KEY Streamlit Secret."
+            secret_name = "GROQ_API_KEY" if provider == "Groq" else "OPENAI_API_KEY"
+            detail = f"{provider} authentication failed. Check the {secret_name} configuration."
         elif "429" in message or "rate limit" in message:
             detail = "The model provider rate limit was reached. Wait and try again."
         elif "connect" in message or "connection" in message or "timeout" in message:
             detail = (
                 "The model provider could not be reached. For Ollama, verify the local URL and service; "
-                "for OpenAI, check network access and try again."
+                "for OpenAI or Groq, check network access and try again."
             )
         else:
             detail = f"Model generation failed: {error}"

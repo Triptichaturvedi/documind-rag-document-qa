@@ -14,6 +14,7 @@ from src.rag_engine import (
     answer_question,
     DEFAULT_OPENAI_MODEL,
     OPENAI_MODELS,
+    DEFAULT_GROQ_MODEL,
     ModelProviderError,
 )
 # --------------------------------------------------
@@ -46,6 +47,11 @@ def configured_openai_api_key() -> str:
         return str(st.secrets.get("OPENAI_API_KEY", ""))
     except FileNotFoundError:
         return os.getenv("OPENAI_API_KEY", "")
+
+
+def configured_groq_api_key() -> str:
+    """Read the Groq key from the process environment only."""
+    return os.getenv("GROQ_API_KEY", "")
 
 
 # --------------------------------------------------
@@ -124,12 +130,13 @@ with st.sidebar:
     st.header("⚙️ Configuration")
 
     configured_key = configured_openai_api_key()
+    configured_groq_key = configured_groq_api_key()
     provider = st.radio(
         "Language model provider",
-        ["OpenAI", "Ollama"],
+        ["OpenAI", "Groq", "Ollama"],
         index=0,
         help=(
-            "OpenAI uses a hosted API. Ollama runs a model locally "
+            "OpenAI and Groq use hosted APIs. Ollama runs a model locally "
             "without an API key if installed and downloaded."
         ),
     )
@@ -150,6 +157,14 @@ with st.sidebar:
 
         ollama_url = "http://localhost:11434"
 
+    elif provider == "Groq":
+        api_key = ""
+        model_name = st.selectbox(
+            "Groq model",
+            [DEFAULT_GROQ_MODEL],
+        )
+        ollama_url = DEFAULT_OLLAMA_URL
+
     else:
         api_key = ""
 
@@ -167,6 +182,11 @@ with st.sidebar:
         st.warning(
             "OpenAI is the cloud-compatible default, but OPENAI_API_KEY is missing. "
             "Add it to Streamlit Secrets or choose Ollama for local use."
+        )
+    elif provider == "Groq" and not configured_groq_key:
+        st.warning(
+            "Groq is selected, but GROQ_API_KEY is missing. "
+            "Add it to the deployment environment or choose another provider."
         )
 
     top_k = st.slider(
@@ -348,6 +368,7 @@ with right:
                         top_k=top_k,
                         openai_api_key=api_key,
                         ollama_base_url=ollama_url,
+                        groq_api_key=configured_groq_key,
                     )
 
                 st.session_state.chat_history.append(
