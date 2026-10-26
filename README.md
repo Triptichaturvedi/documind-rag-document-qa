@@ -2,11 +2,15 @@
 
 A Streamlit application for document-grounded question answering using LangChain, ChromaDB, sentence-transformer embeddings, and either OpenAI or Ollama. The supplied `dataset.csv` is retained for EDA and evaluation analytics; it contains recorded metrics and metadata, not source text. The live RAG index is therefore built from PDFs, DOCX, TXT, Markdown, or HTML files uploaded in the app.
 
+GitHub repository: https://github.com/Triptichaturvedi/documind-rag-document-qa
+
 ## Requirements
-- Windows 10/11, Python 3.10 or 3.11 recommended
+- Windows 10/11, Python 3.12 recommended (also used by Streamlit Community Cloud)
 - 8 GB RAM recommended for CPU embedding; first run downloads `all-MiniLM-L6-v2`
 - Internet access for installing packages and downloading embeddings; OpenAI provider additionally needs an API key and may incur charges
-- Ollama provider is the default and requires Ollama installed with `llama3.2:3b` pulled locally. It runs without an OpenAI API key or paid credits.
+- OpenAI is the cloud-compatible default and requires the `OPENAI_API_KEY`
+  secret. Ollama remains available locally with `llama3.2:3b` pulled and
+  running; it does not require OpenAI credits.
 
 ## Windows setup
 Open PowerShell in this project folder:
@@ -60,7 +64,11 @@ If PowerShell blocks activation, use Command Prompt:
 
 ## Use the application
 1. Launch Streamlit and open the local URL shown in the terminal.
-2. The app defaults to Ollama with the local `llama3.2:3b` model. For OpenAI, select it and enter the API key in the password field; do not paste it into source code or commit it.
+2. The app defaults to OpenAI so the same configuration works in Streamlit
+   Community Cloud. Configure `OPENAI_API_KEY` through Streamlit Secrets or
+   the environment; do not paste it into source code or commit it. For local
+   use without an API key, select Ollama and verify the configured URL and
+   `llama3.2:3b` service.
 3. Upload one or more PDF, DOCX, TXT, MD, or HTML files.
 4. Click **Build / replace document index** and wait for embedding to finish.
 5. Enter a question and click **Get answer**. Expand evidence panels to inspect source chunks and relevance scores.
@@ -71,7 +79,8 @@ If PowerShell blocks activation, use Command Prompt:
 - `data/processed/dataset_cleaned.csv`: cleaned, validated copy
 - `data/processed/data_dictionary_completed.csv`: completed dictionary based on observed columns
 - `python notebooks/eda_analysis.py`: creates four PNG visualisations under `data/reports/`
-- `pytest -q`: runs basic data checks
+- `pytest -q`: runs dataset, provider, retrieval, refusal, and temporary Chroma
+  persistence tests
 
 The verified dataset snapshot contains 500 rows and 7 columns. The three score/size
 fields contain no missing values; `word_count` ranges from 50 to 499,
@@ -90,7 +99,8 @@ statistics from the supplied CSV, not measurements of the live app.
 
 ### Verified runtime checks
 
-- `pytest -q`: **2 passed**
+- `pytest -q`: **6 passed** (including mocked provider, refusal,
+  attribution, and temporary Chroma persistence tests)
 - Python compilation of `app.py`, `src/rag_engine.py`, and
   `notebooks/eda_analysis.py`: **passed**
 - Streamlit startup on port 8503: **HTTP 200**
@@ -103,6 +113,8 @@ statistics from the supplied CSV, not measurements of the live app.
   sources. Answer generation was exercised with a deterministic local test
   stub; Ollama is not installed in the current environment, so no live model
   answer is claimed.
+- A real OpenAI API call was not performed because no credential was available;
+  the automated OpenAI tests use a mock runnable and do not incur API charges.
 
 The data dictionary describes the supplied score fields but does not claim how their scores were calculated. Mean scores in the app are descriptive statistics of the provided dataset, not measured live application performance.
 
@@ -129,6 +141,10 @@ Document upload → format-specific loader → recursive chunking with overlap �
 - Streamlit Community Cloud does not provide the local Ollama service and
   should use OpenAI with a secret API key. The deployed app's Chroma index is
   ephemeral unless a remote persistence strategy is added.
+- Provider errors are surfaced as actionable messages for missing
+  credentials, authentication failures, rate limits, timeouts, and connection
+  failures. Automated tests mock model calls; a real OpenAI API call requires
+  your own key and may incur charges.
 
 ## Project deliverables checklist
 - [x] Working Streamlit prototype code

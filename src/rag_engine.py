@@ -15,6 +15,14 @@ DEFAULT_OLLAMA_MODEL = "llama3.2:3b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_CHROMA_TENANT = "default_tenant"
 DEFAULT_CHROMA_DATABASE = "default_database"
+SUPPORTED_PROVIDERS = {"OpenAI", "Ollama"}
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+OPENAI_MODELS = ("gpt-4o-mini", "gpt-4.1-mini")
+MODEL_REQUEST_TIMEOUT = 60
+
+
+class ModelProviderError(RuntimeError):
+    """Actionable error raised when answer generation cannot reach a provider."""
 
 
 def make_chroma_client(persist_directory: str):
@@ -82,12 +90,14 @@ def open_vector_store(persist_directory: str = "chroma_db", collection_name: str
 
 
 def answer_question(question: str, vector_store, provider: str = "Ollama",
-                    model_name: str = DEFAULT_OLLAMA_MODEL, top_k: int = 4,
+                    model_name: str = DEFAULT_OPENAI_MODEL, top_k: int = 4,
                     openai_api_key: str = "", ollama_base_url: str = DEFAULT_OLLAMA_URL):
     """Retrieve evidence and generate a source-grounded answer. Returns answer and source docs."""
     from langchain_core.prompts import ChatPromptTemplate
     if not question.strip():
         raise ValueError("Please enter a question.")
+    if provider not in SUPPORTED_PROVIDERS:
+        raise ValueError(f"Unsupported model provider: {provider}. Choose OpenAI or Ollama.")
     retrieved = vector_store.similarity_search_with_relevance_scores(question, k=top_k)
     sources = [(doc, float(score)) for doc, score in retrieved if score >= 0.20]
     if not sources:
@@ -102,9 +112,20 @@ def answer_question(question: str, vector_store, provider: str = "Ollama",
     prompt = ChatPromptTemplate.from_messages([("system", system), ("human", "Question: {question}\n\nContext:\n{context}")])
     if provider == "OpenAI":
         if not openai_api_key:
-            raise ValueError("Add your OpenAI API key in the sidebar or set OPENAI_API_KEY.")
+            raise ModelProviderError(
+                "OpenAI is selected, but OPENAI_API_KEY is missing. "
+                "Add it in Streamlit Secrets or choose Ollama for local use."
+            )
+        if model_name not in OPENAI_MODELS:
+            raise ValueError(f"Unsupported OpenAI model: {model_name}. Choose one of {', '.join(OPENAI_MODELS)}.")
         from langchain_openai import ChatOpenAI
-        llm = ChatOpenAI(model=model_name, api_key=openai_api_key, temperature=0)
+        llm = ChatOpenAI(
+            model=model_name,
+            api_key=openai_api_key,
+            temperature=0,
+            timeout=MODEL_REQUEST_TIMEOUT,
+            max_retries=2,
+        )
     else:
         from langchain_ollama import ChatOllama
         if not model_name.strip():
@@ -116,5 +137,20 @@ def answer_question(question: str, vector_store, provider: str = "Ollama",
             base_url=ollama_base_url.strip().rstrip("/"),
             temperature=0,
         )
-    response = (prompt | llm).invoke({"question": question, "context": context})
+    try:
+        response = (prompt | llm).invoke({"question": question, "context": context})
+    except Exception as error:
+        message = str(error).lower()
+        if "401" in message or "authentication" in message or "api key" in message:
+            detail = "OpenAI authentication failed. Check the OPENAI_API_KEY Streamlit Secret."
+        elif "429" in message or "rate limit" in message:
+            detail = "The model provider rate limit was reached. Wait and try again."
+        elif "connect" in message or "connection" in message or "timeout" in message:
+            detail = (
+                "The model provider could not be reached. For Ollama, verify the local URL and service; "
+                "for OpenAI, check network access and try again."
+            )
+        else:
+            detail = f"Model generation failed: {error}"
+        raise ModelProviderError(detail) from error
     return response.content, sources

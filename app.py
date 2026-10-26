@@ -12,6 +12,9 @@ from src.rag_engine import (
     build_vector_store,
     open_vector_store,
     answer_question,
+    DEFAULT_OPENAI_MODEL,
+    OPENAI_MODELS,
+    ModelProviderError,
 )
 # --------------------------------------------------
 # 1. APP CONFIGURATION
@@ -121,12 +124,10 @@ with st.sidebar:
     st.header("⚙️ Configuration")
 
     configured_key = configured_openai_api_key()
-    default_provider = "OpenAI" if configured_key else "Ollama"
-
     provider = st.radio(
         "Language model provider",
         ["OpenAI", "Ollama"],
-        index=0 if default_provider == "OpenAI" else 1,
+        index=0,
         help=(
             "OpenAI uses a hosted API. Ollama runs a model locally "
             "without an API key if installed and downloaded."
@@ -143,8 +144,8 @@ with st.sidebar:
 
         model_name = st.selectbox(
             "Model",
-            ["gpt-4o-mini", "gpt-4.1-mini"],
-            index=0,
+            list(OPENAI_MODELS),
+            index=list(OPENAI_MODELS).index(DEFAULT_OPENAI_MODEL),
         )
 
         ollama_url = "http://localhost:11434"
@@ -160,6 +161,12 @@ with st.sidebar:
         ollama_url = st.text_input(
             "Ollama URL",
             value=DEFAULT_OLLAMA_URL,
+        )
+
+    if provider == "OpenAI" and not configured_key:
+        st.warning(
+            "OpenAI is the cloud-compatible default, but OPENAI_API_KEY is missing. "
+            "Add it to Streamlit Secrets or choose Ollama for local use."
         )
 
     top_k = st.slider(
@@ -353,7 +360,8 @@ with right:
 
             except Exception as error:
                 st.error(f"Could not answer the question: {error}")
-                st.exception(error)
+                if not isinstance(error, ModelProviderError):
+                    st.exception(error)
 
 
 # --------------------------------------------------
