@@ -1,0 +1,8 @@
+column_name,data_type,sample_value_1,sample_value_2,sample_value_3,nullable,description
+doc_id,string,DOC002,DOC034,DOC013,No,Identifier of the source document associated with this chunk. Repeated values indicate multiple chunks from one document.
+doc_type,categorical string,TXT,TXT,HTML,No,"Source document format/type. Values in the source include TXT, HTML, Markdown, PDF and Word."
+chunk_id,string,CHK00001,CHK00002,CHK00003,No,Unique identifier for a document chunk/record in this dataset.
+word_count,integer,457,302,52,No,Number of words recorded for the chunk.
+retrieval_score,float,0.5962,0.7397,0.7735,No,Recorded retrieval score. The dataset does not specify its exact calculation or model.
+query_type,categorical string,analytical,factual,comparative,No,"Category of query associated with the record; observed values include analytical, comparative, factual, procedural and summarization."
+answer_quality_score,float,0.942,0.976,0.660,No,Recorded answer-quality score. The dataset does not specify the scoring rubric or annotator methodology.

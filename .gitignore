@@ -1,0 +1,45 @@
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+*.p12
+*credentials*.json
+*secrets*.json
+
+# Local vector databases and database files
+chroma_db*/
+*.sqlite3
+*.sqlite
+*.db
+*.bin
+
+# Temporary and local runtime files
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Uploaded or potentially private source documents
+uploads/
+documents/
+*.pdf
+*.docx
+rag_test.txt
