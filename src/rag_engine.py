@@ -20,6 +20,18 @@ DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 OPENAI_MODELS = ("gpt-4o-mini", "gpt-4.1-mini")
 MODEL_REQUEST_TIMEOUT = 60
 
+__all__ = [
+    "DEFAULT_OPENAI_MODEL",
+    "OPENAI_MODELS",
+    "ModelProviderError",
+    "answer_question",
+    "build_vector_store",
+    "load_uploaded_file",
+    "make_chroma_client",
+    "open_vector_store",
+    "split_documents",
+]
+
 
 class ModelProviderError(RuntimeError):
     """Actionable error raised when answer generation cannot reach a provider."""
@@ -89,7 +101,7 @@ def open_vector_store(persist_directory: str = "chroma_db", collection_name: str
                   collection_name=collection_name)
 
 
-def answer_question(question: str, vector_store, provider: str = "Ollama",
+def answer_question(question: str, vector_store, provider: str = "OpenAI",
                     model_name: str = DEFAULT_OPENAI_MODEL, top_k: int = 4,
                     openai_api_key: str = "", ollama_base_url: str = DEFAULT_OLLAMA_URL):
     """Retrieve evidence and generate a source-grounded answer. Returns answer and source docs."""
