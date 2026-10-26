@@ -25,14 +25,24 @@ streamlit run app.py
    metadata, and the four PNG reports to a public GitHub repository.
 2. In Streamlit Community Cloud, choose **Create app**, select the repository
    and branch, and set the main file to `app.py`.
-3. In the app settings, add `OPENAI_API_KEY` under **Secrets** if using the
+3. Open **Advanced settings** and select **Python 3.12**. This is required
+   for the pinned ONNX Runtime wheel used by the existing Chroma and
+   sentence-transformer stack. Streamlit Community Cloud controls this
+   setting in its deployment UI; `runtime.txt` is not the supported Python
+   version configuration for Community Cloud.
+4. In the app settings, add `OPENAI_API_KEY` under **Secrets** if using the
    OpenAI provider. Never commit that value.
-4. OpenAI is the supported hosted deployment provider. Ollama requires a
+5. OpenAI is the supported hosted deployment provider. Ollama requires a
    separately running local Ollama server and is not available inside a normal
    Streamlit Community Cloud deployment.
-5. Uploaded documents and the local Chroma index are runtime data. They are
+6. Uploaded documents and the local Chroma index are runtime data. They are
    not repository assets and may be lost when the Cloud app restarts or is
    redeployed; this project does not use a remote persistent vector database.
+
+The deployment pins `chromadb==0.5.23` and `onnxruntime==1.20.1`. These are
+the versions already validated in the local Python 3.12 environment. Do not
+upgrade either package as part of this deployment fix without revalidating the
+full RAG stack.
 
 The public repository should include `data/raw/dataset.csv`,
 `data/processed/dataset_cleaned.csv`,
